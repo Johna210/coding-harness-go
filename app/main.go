@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -55,8 +56,54 @@ func main() {
 		panic("No choices in response")
 	}
 
+	choices := resp.Choices
+
+	// Extract the tool call
+	var toolCalls []openai.ChatCompletionMessageToolCallUnion
+
+	for _, choice := range choices {
+		if choice.FinishReason == "tool_calls" {
+
+			toolCalls = append(toolCalls, choice.Message.ToolCalls...)
+		}
+	}
+
+	for _, toolCall := range toolCalls {
+		// Parse the function name, and arguments
+		functionName := toolCall.Function.Name
+		if functionName == "Read" {
+			var arguments FileArgs
+			err := json.Unmarshal([]byte(toolCall.Function.Arguments), &arguments)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			// Execute the tool
+			fileOutput, err := readFile(arguments.FilePath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+
+			// Output the result
+			fmt.Println(fileOutput)
+		}
+	}
+
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
 	fmt.Print(resp.Choices[0].Message.Content)
+}
+
+func readFile(filePath string) (string, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read file %s: %w", filePath, err)
+	}
+	return string(content), nil
+}
+
+type FileArgs struct {
+	FilePath string `json:"file_path"`
 }
