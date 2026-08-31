@@ -70,6 +70,22 @@ func (l *Loop) executeTool(toolCallID, toolName string, arguments FileArgs) erro
 	return nil
 }
 
+func (l *Loop) fileOperation(input openai.ChatCompletionMessageFunctionToolCallFunction,
+	operation, toolCallID string) {
+	var arguments FileArgs
+	err := json.Unmarshal([]byte(input.Arguments), &arguments)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	err = l.executeTool(toolCallID, operation, arguments)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func (l *Loop) Run() error {
 	for {
 		resp, err := l.client.Chat.Completions.New(context.Background(),
@@ -93,33 +109,10 @@ func (l *Loop) Run() error {
 				l.messages = append(l.messages, choice.Message.ToParam())
 				for _, toolCall := range choice.Message.ToolCalls {
 					if toolCall.Function.Name == "Read" {
-						var arguments FileArgs
-						err := json.Unmarshal([]byte(toolCall.Function.Arguments), &arguments)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: %v\n", err)
-							os.Exit(1)
-						}
-
-						err = l.executeTool(toolCall.ID, "Read", arguments)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: %v\n", err)
-							os.Exit(1)
-						}
-						continue
+						l.fileOperation(toolCall.Function, "Read", toolCall.ID)
 					}
 					if toolCall.Function.Name == "Write" {
-						var arguments FileArgs
-						err := json.Unmarshal([]byte(toolCall.Function.Arguments), &arguments)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: %v\n", err)
-							os.Exit(1)
-						}
-						err = l.executeTool(toolCall.ID, "Write", arguments)
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "error: %v\n", err)
-							os.Exit(1)
-						}
-						continue
+						l.fileOperation(toolCall.Function, "Write", toolCall.ID)
 					}
 				}
 			}
