@@ -29,6 +29,7 @@ func main() {
 
 	loop.RegisterTool(&ReadTool{})
 	loop.RegisterTool(&WriteTool{})
+	loop.RegisterTool(&BashTool{})
 
 	loop.Run()
 

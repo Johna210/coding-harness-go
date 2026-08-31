@@ -1,11 +1,17 @@
 package main
 
-import "github.com/openai/openai-go/v3"
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/openai/openai-go/v3"
+)
 
 type Tool interface {
 	Name() string
 	Definition() openai.ChatCompletionToolUnionParam
-	Execution(arguments FileArgs) (string, error)
+	Execution(rawArgs string) (string, error)
 }
 
 type ReadTool struct{}
@@ -31,7 +37,15 @@ func (rt ReadTool) Definition() openai.ChatCompletionToolUnionParam {
 	})
 }
 
-func (rt ReadTool) Execution(arguments FileArgs) (string, error) {
+func (rt ReadTool) Execution(rawArgs string) (string, error) {
+	var arguments struct {
+		FilePath string `json:"file_path"`
+	}
+	err := json.Unmarshal([]byte(rawArgs), &arguments)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	}
+
 	output, err := ReadFile(arguments.FilePath)
 
 	if err != nil {
@@ -68,10 +82,60 @@ func (wt WriteTool) Definition() openai.ChatCompletionToolUnionParam {
 	})
 }
 
-func (wt WriteTool) Execution(arguments FileArgs) (string, error) {
-	err := WriteFile(arguments.FilePath, *arguments.Content)
+func (wt WriteTool) Execution(rawArgs string) (string, error) {
+	var arguments struct {
+		FilePath string `json:"file_path"`
+		Content  string `json:"content"`
+	}
+
+	err := json.Unmarshal([]byte(rawArgs), &arguments)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	}
+
+	err = WriteFile(arguments.FilePath, arguments.Content)
 	if err != nil {
 		return "", err
 	}
 	return "File written successfully", nil
+}
+
+type BashTool struct{}
+
+func (bt BashTool) Name() string {
+	return "Bash"
+}
+
+func (bt BashTool) Definition() openai.ChatCompletionToolUnionParam {
+	return openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+		Name:        "Bash",
+		Description: openai.String("Execute a shell command"),
+		Parameters: openai.FunctionParameters{
+			"type":     "object",
+			"required": []string{"command"},
+			"properties": map[string]any{
+				"command": map[string]any{
+					"type":        "string",
+					"description": "The command to execute",
+				},
+			},
+		},
+	})
+}
+
+func (bt BashTool) Execution(rawArgs string) (string, error) {
+	var arguments struct {
+		Command string `json:"command"`
+	}
+
+	err := json.Unmarshal([]byte(rawArgs), &arguments)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+	}
+
+	output, err := RunShellCommand(arguments.Command)
+	if err != nil {
+		return "", err
+	}
+	return output, nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 )
 
 func ReadFile(filePath string) (string, error) {
@@ -21,7 +22,12 @@ func WriteFile(filePath, content string) error {
 	return nil
 }
 
-type FileArgs struct {
-	FilePath string  `json:"file_path"`
-	Content  *string `json:"content,omitempty"`
+func RunShellCommand(command string) (string, error) {
+	cmd := exec.Command("sh", "-c", command)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to run command %s: %w", command, err)
+	}
+	return string(output), nil
 }

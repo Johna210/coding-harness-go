@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -58,8 +57,11 @@ func (l *Loop) Chat(prompt string) {
 	l.messages = append(l.messages, assistantMessage)
 }
 
-func (l *Loop) executeTool(toolCallID, toolName string, arguments FileArgs) error {
-	tool := l.tools[toolName]
+func (l *Loop) executeTool(toolCallID, toolName string, arguments string) error {
+	tool, exists := l.tools[toolName]
+	if !exists {
+		return fmt.Errorf("tool not found: %s", toolName)
+	}
 
 	output, err := tool.Execution(arguments)
 	if err != nil {
@@ -68,22 +70,6 @@ func (l *Loop) executeTool(toolCallID, toolName string, arguments FileArgs) erro
 
 	l.messages = append(l.messages, openai.ToolMessage(output, toolCallID))
 	return nil
-}
-
-func (l *Loop) fileOperation(input openai.ChatCompletionMessageFunctionToolCallFunction,
-	operation, toolCallID string) {
-	var arguments FileArgs
-	err := json.Unmarshal([]byte(input.Arguments), &arguments)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-
-	err = l.executeTool(toolCallID, operation, arguments)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
 }
 
 func (l *Loop) Run() error {
@@ -108,11 +94,11 @@ func (l *Loop) Run() error {
 			if choice.FinishReason == "tool_calls" {
 				l.messages = append(l.messages, choice.Message.ToParam())
 				for _, toolCall := range choice.Message.ToolCalls {
-					if toolCall.Function.Name == "Read" {
-						l.fileOperation(toolCall.Function, "Read", toolCall.ID)
-					}
-					if toolCall.Function.Name == "Write" {
-						l.fileOperation(toolCall.Function, "Write", toolCall.ID)
+					err := l.executeTool(toolCall.ID, toolCall.Function.Name,
+						toolCall.Function.Arguments)
+
+					if err != nil {
+						return err
 					}
 				}
 			}
