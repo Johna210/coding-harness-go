@@ -58,7 +58,7 @@ func (l *Loop) Chat(prompt string) {
 	l.messages = append(l.messages, assistantMessage)
 }
 
-func (l *Loop) executeTool(toolCallID, toolName, arguments string) error {
+func (l *Loop) executeTool(toolCallID, toolName string, arguments FileArgs) error {
 	tool := l.tools[toolName]
 
 	output, err := tool.Execution(arguments)
@@ -99,7 +99,22 @@ func (l *Loop) Run() error {
 							fmt.Fprintf(os.Stderr, "error: %v\n", err)
 							os.Exit(1)
 						}
-						err = l.executeTool(toolCall.ID, "Read", arguments.FilePath)
+
+						err = l.executeTool(toolCall.ID, "Read", arguments)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "error: %v\n", err)
+							os.Exit(1)
+						}
+						continue
+					}
+					if toolCall.Function.Name == "Write" {
+						var arguments FileArgs
+						err := json.Unmarshal([]byte(toolCall.Function.Arguments), &arguments)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "error: %v\n", err)
+							os.Exit(1)
+						}
+						err = l.executeTool(toolCall.ID, "Write", arguments)
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error: %v\n", err)
 							os.Exit(1)

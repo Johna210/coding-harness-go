@@ -13,6 +13,15 @@ func ReadFile(filePath string) (string, error) {
 	return string(content), nil
 }
 
+func WriteFile(filePath, content string) error {
+	err := os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write file %s: %w", filePath, err)
+	}
+	return nil
+}
+
 type FileArgs struct {
-	FilePath string `json:"file_path"`
+	FilePath string  `json:"file_path"`
+	Content  *string `json:"content,omitempty"`
 }

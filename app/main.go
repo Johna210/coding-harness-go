@@ -28,6 +28,7 @@ func main() {
 	loop := Intialize(prompt, apiKey, baseUrl, "anthropic/claude-haiku-4.5")
 
 	loop.RegisterTool(&ReadTool{})
+	loop.RegisterTool(&WriteTool{})
 
 	loop.Run()
 
