@@ -31,3 +31,5 @@ func RunShellCommand(command string) (string, error) {
 	}
 	return string(output), nil
 }
+
+func ParseYaml() {}
