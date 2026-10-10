@@ -92,3 +92,35 @@ func ReadAfterFirstBlankLine(filepath string) (string, error) {
 
 	return strings.Join(contentLines, "\n"), nil
 }
+
+func ProcessSubdirectories(rootDir, targetFileName string) ([]string, error) {
+	entries, err := os.ReadDir(rootDir)
+	if err != nil {
+		return []string{}, nil
+	}
+
+	strings := []string{}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		subDirName := entry.Name()
+		targetFilePath := filepath.Join(rootDir, subDirName, targetFileName)
+
+		if _, err := os.Stat(targetFilePath); os.IsNotExist(err) {
+			fmt.Printf("[Skipping] %s not found in the directory %q\n", targetFileName, subDirName)
+			continue
+		}
+
+		content, err := ReadFile(targetFilePath)
+		if err != nil {
+			return strings, err
+		}
+
+		strings = append(strings, content)
+	}
+
+	return strings, nil
+}

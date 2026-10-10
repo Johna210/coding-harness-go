@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -73,8 +74,14 @@ func (l *Loop) executeTool(toolCallID, toolName string, arguments string) error 
 	return nil
 }
 
-func (l *Loop) resolveSkills() {
+func (l *Loop) resolveSkills() error {
+	contentList, err := ProcessSubdirectories(l.skillLocation, "SKILL.md")
+	if err != nil {
+		return err
+	}
 
+	l.messages = append(l.messages, openai.AssistantMessage(strings.Join(contentList, "\n")))
+	return nil
 }
 
 func (l *Loop) invokeSkill(skillName string) string {
@@ -94,6 +101,11 @@ func (l *Loop) invokeSkill(skillName string) string {
 }
 
 func (l *Loop) Run(prompt string) error {
+	err := l.resolveSkills()
+	if err != nil {
+		return err
+	}
+
 	content := prompt
 
 	if prompt[0] == '/' {
