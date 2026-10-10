@@ -79,7 +79,6 @@ func (l *Loop) resolveSkills() error {
 	if err != nil {
 		return err
 	}
-
 	l.messages = append(l.messages, openai.AssistantMessage(strings.Join(contentList, "\n")))
 	return nil
 }

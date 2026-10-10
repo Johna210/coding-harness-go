@@ -93,6 +93,47 @@ func ReadAfterFirstBlankLine(filepath string) (string, error) {
 	return strings.Join(contentLines, "\n"), nil
 }
 
+func ReadSkillIntro(filepath string) (string, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return "", err
+	}
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var introLines []string
+	state := 0
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+
+		isDelimiter := strings.HasPrefix(trimmed, "---")
+
+		if state == 0 {
+			if isDelimiter {
+				state = 1
+			}
+			continue
+		}
+
+		if state == 1 {
+			if isDelimiter {
+				break
+			}
+			introLines = append(introLines, line)
+		}
+
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return strings.Join(introLines, "\n"), nil
+}
+
 func ProcessSubdirectories(rootDir, targetFileName string) ([]string, error) {
 	entries, err := os.ReadDir(rootDir)
 	if err != nil {
@@ -114,7 +155,7 @@ func ProcessSubdirectories(rootDir, targetFileName string) ([]string, error) {
 			continue
 		}
 
-		content, err := ReadFile(targetFilePath)
+		content, err := ReadSkillIntro(targetFilePath)
 		if err != nil {
 			return strings, err
 		}
