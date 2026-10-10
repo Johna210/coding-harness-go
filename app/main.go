@@ -25,13 +25,13 @@ func main() {
 		panic("Env variable OPENROUTER_API_KEY not found")
 	}
 
-	loop := Intialize(prompt, apiKey, baseUrl, "anthropic/claude-haiku-4.5")
+	loop := Initialize(apiKey, baseUrl, "anthropic/claude-haiku-4.5")
 
 	loop.RegisterTool(&ReadTool{})
 	loop.RegisterTool(&WriteTool{})
 	loop.RegisterTool(&BashTool{})
 
-	loop.Run()
+	loop.Run(prompt)
 
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")

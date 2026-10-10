@@ -10,19 +10,20 @@ import (
 )
 
 type Loop struct {
-	client   openai.Client
-	model    string
-	messages []openai.ChatCompletionMessageParamUnion
-	tools    map[string]Tool
+	client        openai.Client
+	model         string
+	messages      []openai.ChatCompletionMessageParamUnion
+	tools         map[string]Tool
+	skillLocation string
 }
 
 // Initialize the conversation
-func Intialize(prompt, apiKey, baseUrl, model string) *Loop {
+func Initialize(apiKey, baseUrl, model string) *Loop {
 	loop := Loop{
-		client:   openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl)),
-		model:    model,
-		messages: []openai.ChatCompletionMessageParamUnion{openai.UserMessage(prompt)},
-		tools:    make(map[string]Tool),
+		client:        openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl)),
+		model:         model,
+		tools:         make(map[string]Tool),
+		skillLocation: ".claude/skills",
 	}
 
 	return &loop
@@ -72,7 +73,34 @@ func (l *Loop) executeTool(toolCallID, toolName string, arguments string) error 
 	return nil
 }
 
-func (l *Loop) Run() error {
+func (l *Loop) resolveSkills() {
+
+}
+
+func (l *Loop) invokeSkill(skillName string) string {
+	path, err := FindDirectoryRecursive(l.skillLocation, skillName)
+	if err != nil {
+		return ""
+	}
+
+	filePath := path + "/SKILL.md"
+
+	content, err := ReadAfterFirstBlankLine(filePath)
+	if err != nil {
+		return ""
+	}
+
+	return content
+}
+
+func (l *Loop) Run(prompt string) error {
+	content := prompt
+
+	if prompt[0] == '/' {
+		content = l.invokeSkill(prompt[1:])
+	}
+	l.messages = []openai.ChatCompletionMessageParamUnion{openai.UserMessage(content)}
+
 	for {
 		resp, err := l.client.Chat.Completions.New(context.Background(),
 			openai.ChatCompletionNewParams{
